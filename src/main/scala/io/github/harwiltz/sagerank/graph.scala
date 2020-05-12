@@ -13,25 +13,51 @@ import io.github.harwiltz.sagerank.random.EmpiricalCategoricalDistribution
 import SageRanker._
 
 object SageRanker {
-  type SageRankNode = ArticleMetadata
+  type SageRankNode = String
   type SageRankGraph = Graph[SageRankNode, UnDiEdge]
-
-  def articleGraph(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
-    (Graph[SageRankNode, UnDiEdge]() /: artbibs) { (acc, artbib) =>
-      (acc /: artbib.references) { (g, ref) => g + artbib.article~ref }
-    }
+  type SageRankType = ArticleMetadata
 }
 
 class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
+                 articleMap: Map[SageRankNode, ArticleMetadata] = Map[SageRankNode, ArticleMetadata](),
                  p: Double = 0.15) {
 
   val rnd = new RandomSampler
 
   def withArticleGraph(artbib: ArticleBibliography): SageRanker =
-    new SageRanker(this.graph union articleGraph(Array(artbib)), this.p)
+    this.withArticleGraphs(Array(artbib))
 
-  def withArticleGraphs(artbibs: Iterable[ArticleBibliography]): SageRanker =
-    new SageRanker(this.graph union articleGraph(artbibs), this.p)
+  def withArticleGraphs(artbibs: Iterable[ArticleBibliography]): SageRanker = {
+    val newGraph = this.graph union articleGraph(artbibs)
+    val newArticleMap = (this.articleMap /: artbibs) { (acc, artbib) =>
+      acc.get(makeNode(artbib.article)) match {
+        case Some(article) => {
+          article.status match {
+            case UnreadArticle => acc + (makeNode(article) -> artbib.article)
+            case _ => artbib.article.status match {
+              case ReadArticle => acc + (makeNode(artbib.article) -> artbib.article)
+              case _ => acc
+            }
+          }
+        }
+        case None => acc + (makeNode(artbib.article) -> artbib.article)
+      }
+    }
+    new SageRanker(newGraph, articleMap = newArticleMap, p = this.p)
+  }
+
+  def withChangedStatus(status: ArticleStatus)(item: SageRankType): SageRanker = this.articleMap.get(this.makeNode(item)) match {
+    case Some(article) => {
+      val newArticle = article.copy(status = status)
+      val newArticleMap = this.articleMap + (this.makeNode(newArticle) -> newArticle)
+      new SageRanker(this.graph, articleMap = newArticleMap, p = this.p)
+    }
+    case None => this
+  }
+
+  def withMarkedRead = withChangedStatus(ReadArticle)_
+  def withMarkedUnread = withChangedStatus(UnreadArticle)_
+  def withMarkedInterested = withChangedStatus(InterestedInArticle)_
 
   def sample: SageRankNode = {
     val nodes = this.graph.nodes
@@ -50,4 +76,11 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
                                   .foldLeft(initialMap) { (acc, node) => acc + (node -> (acc.apply(node) + 1)) }
     new EmpiricalCategoricalDistribution(counts)
   }
+
+  def makeNode(item: SageRankType): SageRankNode = item.id
+
+  def articleGraph(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
+    (Graph[SageRankNode, UnDiEdge]() /: artbibs) { (acc, artbib) =>
+      (acc /: artbib.references) { (g, ref) => g + this.makeNode(artbib.article)~this.makeNode(ref) }
+    }
 }
