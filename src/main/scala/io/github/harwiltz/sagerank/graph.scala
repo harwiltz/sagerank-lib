@@ -77,6 +77,18 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
     new EmpiricalCategoricalDistribution(counts)
   }
 
+  def suggestUnread: SageRankType = {
+    val _sample = this.sample
+    val result = for {
+      articleSampled <- this.articleMap.get(_sample)
+      article <- articleSampled.status match {
+        case UnreadArticle => Some(articleSampled)
+        case _ => None
+      }
+    } yield article
+    result.getOrElse(this.suggestUnread)
+  }
+
   def makeNode(item: SageRankType): SageRankNode = item.id
 
   def articleGraph(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
