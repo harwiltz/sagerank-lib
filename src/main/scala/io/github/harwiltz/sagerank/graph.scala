@@ -6,14 +6,24 @@ import scalax.collection.GraphEdge._
 
 import io.github.harwiltz.sagerank._
 
-class SageRanker(articles: Iterable[ArticleBibliography], p: Float = 0.15f) {
-  type SageRankGraph = Graph[ArticleMetadata, UnDiEdge]
-  val graph = initGraph(articles)
+import SageRanker._
 
-  def initGraph(articles: Iterable[ArticleBibliography]): SageRankGraph = addArticleReferences(articles)
+object SageRanker {
+  type SageRankNode = ArticleMetadata
+  type SageRankGraph = Graph[SageRankNode, UnDiEdge]
 
-  def addArticleReferences(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
-    (Graph[ArticleMetadata, UnDiEdge]() /: artbibs) { (acc, artbib) =>
+  def articleGraph(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
+    (Graph[SageRankNode, UnDiEdge]() /: artbibs) { (acc, artbib) =>
       (acc /: artbib.references) { (g, ref) => g + artbib.article~ref }
     }
+}
+
+class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
+                 p: Float = 0.15f) {
+
+  def withArticleGraph(artbib: ArticleBibliography): SageRanker =
+    new SageRanker(this.graph union articleGraph(Array(artbib)), this.p)
+
+  def withArticleGraphs(artbibs: Iterable[ArticleBibliography]): SageRanker =
+    new SageRanker(this.graph union articleGraph(artbibs), this.p)
 }
