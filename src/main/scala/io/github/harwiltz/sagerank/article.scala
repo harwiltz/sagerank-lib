@@ -11,6 +11,11 @@ case class ArticleBibliography(article: ArticleMetadata, references: Vector[Arti
 abstract class SemanticArticleReference
 case class ArticleReference(id: String) extends SemanticArticleReference
 case class ArxivArticleReference(id: String) extends SemanticArticleReference
+case class DOIArticleReference(id: String) extends SemanticArticleReference
+case class MAGArticleReference(id: String) extends SemanticArticleReference
+case class ACLArticleReference(id: String) extends SemanticArticleReference
+case class PubMedArticleReference(id: String) extends SemanticArticleReference
+case class CorpusArticleReference(id: String) extends SemanticArticleReference
 
 object Article {
   val apiPrefix = "https://api.semanticscholar.org/v1/paper/"
@@ -68,5 +73,10 @@ object Article {
   private def paperId(ref: SemanticArticleReference): String = ref match {
     case ArxivArticleReference(id) => s"arxiv:${id}"
     case ArticleReference(id) => id
+    case DOIArticleReference(id) => id
+    case MAGArticleReference(id) => s"MAG:${id}"
+    case ACLArticleReference(id) => s"ACL:${id}"
+    case PubMedArticleReference(id) => s"PMID:${id}"
+    case CorpusArticleReference(id) => s"CorpusID:${id}"
   }
 }
