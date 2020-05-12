@@ -19,8 +19,8 @@ object SageRanker {
 }
 
 class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
-                 articleMap: Map[SageRankNode, ArticleBibliography] = Map[SageRankNode, ArticleBibliography](),
-                 p: Double = 0.15) {
+                 val articleMap: Map[SageRankNode, ArticleBibliography] = Map[SageRankNode, ArticleBibliography](),
+                 val p: Double = 0.15) {
 
   val rnd = new RandomSampler
 
@@ -29,7 +29,8 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
 
   def withArticleGraphs(artbibs: Iterable[ArticleBibliography]): SageRanker = {
     val newGraph = this.graph union articleGraph(artbibs)
-    val newArticleMap = (this.articleMap /: artbibs) { (acc, artbib) =>
+    val newArtBibs = artbibs ++ artbibs.flatMap(x => x.references)
+    val newArticleMap = (this.articleMap /: newArtBibs) { (acc, artbib) =>
       acc.get(makeNode(artbib)) match {
         case Some(_artbib) => {
           _artbib.article.status match {

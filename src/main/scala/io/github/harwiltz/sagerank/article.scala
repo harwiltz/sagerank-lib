@@ -19,7 +19,7 @@ case object ReadArticle extends ArticleStatus
 case object UnreadArticle extends ArticleStatus
 case object InterestedInArticle extends ArticleStatus
 
-case class ArticleMetadata(id: String, title: String, authors: Vector[String], abs: String, status: ArticleStatus)
+case class ArticleMetadata(id: String, title: String, authors: Vector[String], abs: String, year: String, status: ArticleStatus)
 case class ArticleBibliography(article: ArticleMetadata, references: Vector[ArticleBibliography])
 
 object Article {
@@ -27,6 +27,7 @@ object Article {
 
   val missingAuthorName = "Unkown Author"
   val missingAbstract = "No Abstract"
+  val missingYear = "Unknown Year"
 
   def fromPaperId(ref: SemanticArticleReference,
                   getReferences: Boolean = false,
@@ -57,6 +58,7 @@ object Article {
                       .getOrElse(Vector[JsValue]())
                       .map(a => getAuthorFromJson(a))
     val abs = json.get("abs").map(a => a.convertTo[String])
+    val year = json.get("year").map(y => y.convertTo[String])
     for {
       id <- json.get("paperId")
       title <- json.get("title")
@@ -64,6 +66,7 @@ object Article {
                             title.convertTo[String],
                             authors,
                             abs.getOrElse(missingAbstract),
+                            year.getOrElse(missingYear),
                             status)
   }
 
