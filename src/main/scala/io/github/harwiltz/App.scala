@@ -23,7 +23,7 @@ object App {
         println(s"Id: ${article.id}")
         println("References:")
         references foreach { r =>
-          println(r.title)
+          println(r.article.title)
         }
       }
     }

@@ -20,7 +20,7 @@ case object UnreadArticle extends ArticleStatus
 case object InterestedInArticle extends ArticleStatus
 
 case class ArticleMetadata(id: String, title: String, authors: Vector[String], abs: String, status: ArticleStatus)
-case class ArticleBibliography(article: ArticleMetadata, references: Vector[ArticleMetadata])
+case class ArticleBibliography(article: ArticleMetadata, references: Vector[ArticleBibliography])
 
 object Article {
   val apiPrefix = "https://api.semanticscholar.org/v1/paper/"
@@ -37,16 +37,19 @@ object Article {
     val references = if(getReferences) {
                        extractArticleReferences(responseJson)
                      } else {
-                       Vector[ArticleMetadata]()
+                       Vector[ArticleBibliography]()
                      }
     article.map { a => ArticleBibliography(a, references) }
   }
 
-  def attachReferences(article: ArticleMetadata): ArticleBibliography = {
-    val responseJson = responseBodyAst(article.id)
-    val references = extractArticleReferences(responseJson)
-    ArticleBibliography(article, references)
-  }
+  def attachReferences(artbib: ArticleBibliography): ArticleBibliography =
+    if(artbib.references.isEmpty) {
+      val responseJson = responseBodyAst(artbib.article.id)
+      val references = extractArticleReferences(responseJson)
+      artbib.copy(references = references)
+    } else {
+      artbib
+    }
 
   private def extractArticleMetadata(json: Map[String, JsValue], status: ArticleStatus = UnreadArticle): Option[ArticleMetadata] = {
     val authors = json.get("authors")
@@ -64,12 +67,13 @@ object Article {
                             status)
   }
 
-  private def extractArticleReferences(json: Map[String, JsValue]): Vector[ArticleMetadata] = {
+  private def extractArticleReferences(json: Map[String, JsValue]): Vector[ArticleBibliography] = {
     val referencesJsValue = json.get("references").map(x => x.convertTo[Vector[JsValue]])
                                                   .getOrElse(Vector[JsValue]())
     referencesJsValue.map(x => x.asJsObject.fields)
                      .map(x => extractArticleMetadata(x))
                      .flatten
+                     .map(x => ArticleBibliography(x, Vector[ArticleBibliography]()))
   }
 
   private def getAuthorFromJson(json: JsValue): String = {

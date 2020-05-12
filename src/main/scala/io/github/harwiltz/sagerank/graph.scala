@@ -15,11 +15,11 @@ import SageRanker._
 object SageRanker {
   type SageRankNode = String
   type SageRankGraph = Graph[SageRankNode, UnDiEdge]
-  type SageRankType = ArticleMetadata
+  type SageRankType = ArticleBibliography
 }
 
 class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
-                 articleMap: Map[SageRankNode, ArticleMetadata] = Map[SageRankNode, ArticleMetadata](),
+                 articleMap: Map[SageRankNode, ArticleBibliography] = Map[SageRankNode, ArticleBibliography](),
                  p: Double = 0.15) {
 
   val rnd = new RandomSampler
@@ -30,26 +30,26 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
   def withArticleGraphs(artbibs: Iterable[ArticleBibliography]): SageRanker = {
     val newGraph = this.graph union articleGraph(artbibs)
     val newArticleMap = (this.articleMap /: artbibs) { (acc, artbib) =>
-      acc.get(makeNode(artbib.article)) match {
-        case Some(article) => {
-          article.status match {
-            case UnreadArticle => acc + (makeNode(article) -> artbib.article)
+      acc.get(makeNode(artbib)) match {
+        case Some(_artbib) => {
+          _artbib.article.status match {
+            case UnreadArticle => acc + (makeNode(artbib) -> artbib)
             case _ => artbib.article.status match {
-              case ReadArticle => acc + (makeNode(artbib.article) -> artbib.article)
+              case ReadArticle => acc + (makeNode(artbib) -> artbib)
               case _ => acc
             }
           }
         }
-        case None => acc + (makeNode(artbib.article) -> artbib.article)
+        case None => acc + (makeNode(artbib) -> artbib)
       }
     }
     new SageRanker(newGraph, articleMap = newArticleMap, p = this.p)
   }
 
   def withChangedStatus(status: ArticleStatus)(item: SageRankType): SageRanker = this.articleMap.get(this.makeNode(item)) match {
-    case Some(article) => {
-      val newArticle = article.copy(status = status)
-      val newArticleMap = this.articleMap + (this.makeNode(newArticle) -> newArticle)
+    case Some(artbib) => {
+      val newArtBib = artbib.copy(article = artbib.article.copy(status = status))
+      val newArticleMap = this.articleMap + (this.makeNode(newArtBib) -> newArtBib)
       new SageRanker(this.graph, articleMap = newArticleMap, p = this.p)
     }
     case None => this
@@ -81,7 +81,7 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
     val _sample = this.sample
     val result = for {
       articleSampled <- this.articleMap.get(_sample)
-      article <- articleSampled.status match {
+      article <- articleSampled.article.status match {
         case UnreadArticle => Some(articleSampled)
         case _ => None
       }
@@ -89,10 +89,10 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
     result.getOrElse(this.suggestUnread)
   }
 
-  def makeNode(item: SageRankType): SageRankNode = item.id
+  def makeNode(item: SageRankType): SageRankNode = item.article.id
 
   def articleGraph(artbibs: Iterable[ArticleBibliography]): SageRankGraph =
     (Graph[SageRankNode, UnDiEdge]() /: artbibs) { (acc, artbib) =>
-      (acc /: artbib.references) { (g, ref) => g + this.makeNode(artbib.article)~this.makeNode(ref) }
+      (acc /: artbib.references) { (g, ref) => g + this.makeNode(artbib)~this.makeNode(ref) }
     }
 }
