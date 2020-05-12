@@ -4,10 +4,10 @@ import scala.math
 import scala.util.Random
 
 class RandomSampler extends Random {
-  private val minLog = 0.000001
+  private val minLogArg = 0.000001
 
   def sampleGeometric(p: Double): Double = {
     val u = this.nextDouble()
-    math.max(math.log(1.0 - u), minLog) / math.log(1.0 - p)
+    math.log(math.max(1.0 - u, minLogArg)) / math.log(1.0 - p)
   }
 }
