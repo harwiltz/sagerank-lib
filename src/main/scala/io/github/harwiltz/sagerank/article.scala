@@ -78,7 +78,7 @@ object Article {
                       .getOrElse(Vector[JsValue]())
                       .map(a => getAuthorFromJson(a))
     val abs = json.get("abs").map(a => a.convertTo[String])
-    val year = json.get("year").map(y => y.convertTo[String])
+    val year = json.get("year").map(y => y.convertTo[Int].toString)
     for {
       id <- json.get("paperId")
       title <- json.get("title")
