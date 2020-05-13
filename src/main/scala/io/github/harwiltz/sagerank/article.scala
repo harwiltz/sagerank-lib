@@ -1,5 +1,7 @@
 package io.github.harwiltz.sagerank
 
+import scala.util.matching.Regex
+
 import scalaj.http.Http
 import spray.json._
 
@@ -28,6 +30,24 @@ object Article {
   val missingAuthorName = "Unkown Author"
   val missingAbstract = "No Abstract"
   val missingYear = "Unknown Year"
+
+  val arxivMatcher = """arxiv.org/(pdf|abs)/(\d+\.\d+)$""".r.unanchored
+  val semanticIdMatcher = """^([a-z0-9]{40})$""".r.unanchored
+  val doiMatcher = """(doi.org|doi/full)/(.+)""".r.unanchored
+  val pubmedMatcher = """/pubmed/(\d+)$""".r.unanchored
+
+  def fromURL(url: String,
+              getReferences: Boolean = false,
+              status: ArticleStatus = InterestedInArticle): Option[ArticleBibliography] = {
+    val articleId = url match {
+      case arxivMatcher(_, id) => Some(ArxivArticleReference(id))
+      case semanticIdMatcher(id) => Some(ArticleReference(id))
+      case doiMatcher(_, id) => Some(DOIArticleReference(id))
+      case pubmedMatcher(id) => Some(PubMedArticleReference(id))
+      case _ => None
+    }
+    articleId.flatMap(id => fromPaperId(id, getReferences, status))
+  }
 
   def fromPaperId(ref: SemanticArticleReference,
                   getReferences: Boolean = false,
