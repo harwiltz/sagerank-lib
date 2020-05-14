@@ -159,18 +159,20 @@ object SageRankerJsonProtocol extends DefaultJsonProtocol {
       "authors" -> JsArray(artbib.article.authors.map(x => JsString(x))),
       "abs" -> JsString(artbib.article.abs),
       "year" -> JsString(artbib.article.year),
+      "url" -> JsString(artbib.article.url),
       "status" -> JsNumber(formatStatus(artbib.article.status)),
       "references" -> JsArray(artbib.references.map(_.toJson))
     )
 
     def read(value: JsValue): ArticleBibliography = {
-      val am = value.asJsObject.getFields("id", "title", "authors", "abs", "year", "status") match {
-        case Seq(JsString(id), JsString(title), JsArray(authors), JsString(abs), JsString(year), JsNumber(status)) =>
+      val am = value.asJsObject.getFields("id", "title", "authors", "abs", "year", "url", "status") match {
+        case Seq(JsString(id), JsString(title), JsArray(authors), JsString(abs), JsString(year), JsString(url), JsNumber(status)) =>
           ArticleMetadata(id,
                           title,
                           authors.map(_.convertTo[String]),
                           abs,
                           year,
+                          url,
                           readStatus(status.toInt))
         case _ => throw new DeserializationException("ArticleBibliography serialization does not have proper ArticleMetadata")
       }

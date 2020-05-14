@@ -21,7 +21,15 @@ case object ReadArticle extends ArticleStatus
 case object UnreadArticle extends ArticleStatus
 case object InterestedInArticle extends ArticleStatus
 
-case class ArticleMetadata(id: String, title: String, authors: Vector[String], abs: String, year: String, status: ArticleStatus)
+case class ArticleMetadata(
+  id      : String,
+  title   : String,
+  authors : Vector[String],
+  abs     : String,
+  year    : String,
+  url     : String,
+  status  : ArticleStatus
+)
 case class ArticleBibliography(article: ArticleMetadata, references: Vector[ArticleBibliography])
 
 object Article {
@@ -30,11 +38,12 @@ object Article {
   val missingAuthorName = "Unkown Author"
   val missingAbstract = "No Abstract"
   val missingYear = "Unknown Year"
+  val missingUrl = "/library"
 
-  val arxivMatcher = """arxiv.org/(pdf|abs)/(\d+\.\d+)$""".r.unanchored
-  val semanticIdMatcher = """^([a-z0-9]{40})$""".r.unanchored
+  val arxivMatcher = """arxiv.org/(pdf|abs)/(\d+\.\d+)""".r.unanchored
+  val semanticIdMatcher = """([a-z0-9]{40})""".r.unanchored
   val doiMatcher = """(doi.org|doi/full)/(.+)""".r.unanchored
-  val pubmedMatcher = """/pubmed/(\d+)$""".r.unanchored
+  val pubmedMatcher = """/pubmed/(\d+)""".r.unanchored
 
   def fromURL(url: String,
               getReferences: Boolean = false,
@@ -90,6 +99,7 @@ object Article {
                       .map(a => getAuthorFromJson(a))
     val abs = json.get("abstract").map(a => a.convertTo[String])
     val year = json.get("year").map(y => y.convertTo[Int].toString)
+    val url = json.get("url").map(u => u.convertTo[String])
     for {
       id <- json.get("paperId")
       title <- json.get("title")
@@ -98,6 +108,7 @@ object Article {
                             authors,
                             abs.getOrElse(missingAbstract),
                             year.getOrElse(missingYear),
+                            url.getOrElse(missingUrl),
                             status)
   }
 
