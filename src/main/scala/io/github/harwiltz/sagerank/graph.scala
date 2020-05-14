@@ -85,8 +85,7 @@ class SageRanker(val graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
         case UnreadArticle => modifiedArtBib
         case _ => Article.attachReferences(modifiedArtBib)
       }
-      val newArticleMap = this.articleMap + (this.makeNode(newArtBib) -> newArtBib)
-      new SageRanker(this.graph, articleMap = newArticleMap, p = this.p)
+      this.withArticleGraph(newArtBib)
     }
     case None => this
   }
