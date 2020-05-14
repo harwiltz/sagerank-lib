@@ -5,6 +5,11 @@ import scala.math
 import scalax.collection.Graph
 import scalax.collection.GraphPredef._
 import scalax.collection.GraphEdge._
+import scalax.collection.io.json._
+import scalax.collection.io.json.descriptor.StringNodeDescriptor
+import scalax.collection.io.json.descriptor.predefined._
+import spray.json._
+import DefaultJsonProtocol._
 
 import io.github.harwiltz.sagerank._
 import io.github.harwiltz.sagerank.random.RandomSampler
@@ -18,11 +23,11 @@ object SageRanker {
   type SageRankType = ArticleBibliography
 }
 
-class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
+class SageRanker(val graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
                  val articleMap: Map[SageRankNode, ArticleBibliography] = Map[SageRankNode, ArticleBibliography](),
                  val p: Double = 0.15) {
 
-  val rnd = new RandomSampler
+  lazy val rnd = new RandomSampler
 
   def withArticleGraph(artbib: ArticleBibliography): SageRanker =
     this.withArticleGraphs(Array(artbib))
@@ -96,4 +101,72 @@ class SageRanker(graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
     (Graph[SageRankNode, UnDiEdge]() /: artbibs) { (acc, artbib) =>
       (acc /: artbib.references) { (g, ref) => g + this.makeNode(artbib)~this.makeNode(ref) }
     }
+}
+
+object SageRankerJsonProtocol extends DefaultJsonProtocol {
+  val descriptor = new Descriptor[String](defaultNodeDescriptor = StringNodeDescriptor,
+                                          defaultEdgeDescriptor = UnDi.descriptor[String]())
+
+  val readCode = 0
+  val interestedInCode = 1
+  val unreadCode = 2
+
+  def formatStatus(status: ArticleStatus): Int = status match {
+    case ReadArticle => readCode
+    case InterestedInArticle => interestedInCode
+    case UnreadArticle => unreadCode
+  }
+
+  def readStatus(code: Int): ArticleStatus = code match {
+    case `readCode` => ReadArticle
+    case `interestedInCode` => InterestedInArticle
+    case `unreadCode` => UnreadArticle
+  }
+
+  implicit object ArticleBibliographyFormat extends RootJsonFormat[ArticleBibliography] {
+    def write(artbib: ArticleBibliography): JsObject = JsObject(
+      "id" -> JsString(artbib.article.id),
+      "title" -> JsString(artbib.article.title),
+      "authors" -> JsArray(artbib.article.authors.map(x => JsString(x))),
+      "abs" -> JsString(artbib.article.abs),
+      "year" -> JsString(artbib.article.year),
+      "status" -> JsNumber(formatStatus(artbib.article.status)),
+      "references" -> JsArray(artbib.references.map(_.toJson))
+    )
+
+    def read(value: JsValue): ArticleBibliography = {
+      val am = value.asJsObject.getFields("id", "title", "authors", "abs", "year", "status") match {
+        case Seq(JsString(id), JsString(title), JsArray(authors), JsString(abs), JsString(year), JsNumber(status)) =>
+          ArticleMetadata(id,
+                          title,
+                          authors.map(_.convertTo[String]),
+                          abs,
+                          year,
+                          readStatus(status.toInt))
+        case _ => throw new DeserializationException("ArticleBibliography serialization does not have proper ArticleMetadata")
+      }
+      value.asJsObject.getFields("references") match {
+        case Seq(JsArray(references)) => ArticleBibliography(am, references.map(_.convertTo[ArticleBibliography]))
+        case _ => throw new DeserializationException("Invalid references in ArticleBibliography serialization")
+      }
+    }
+  }
+
+  implicit object SageRankerJsonFormat extends RootJsonFormat[SageRanker] {
+    def write(sageranker: SageRanker): JsObject = JsObject(
+      "graph" -> JsString(sageranker.graph.toJson(descriptor)),
+      "articleMap" -> sageranker.articleMap.toJson,
+      "p" -> JsNumber(sageranker.p)
+    )
+
+    def read(value: JsValue): SageRanker = {
+      value.asJsObject.getFields("graph", "articleMap", "p") match {
+        case Seq(JsString(graph), JsObject(articleMap), JsNumber(p)) =>
+          new SageRanker(Graph.fromJson[SageRankNode, UnDiEdge](graph, descriptor),
+                         articleMap.map { case (k, v) => (k -> v.convertTo[ArticleBibliography]) },
+                         p.toDouble)
+        case _ => throw new DeserializationException("Invalid SageRanker!")
+      }
+    }
+  }
 }
