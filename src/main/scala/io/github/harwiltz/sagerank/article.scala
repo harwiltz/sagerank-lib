@@ -72,6 +72,17 @@ object Article {
       artbib
     }
 
+  def attachAbstract(artbib: ArticleBibliography): ArticleBibliography = {
+    if(artbib.article.abs.equals(missingAbstract)) {
+      val article = artbib.article
+      val json = responseBodyAst(article.id)
+      val abs = json.get("abstract").map(a => a.convertTo[String]).getOrElse(missingAbstract)
+      artbib.copy(article=article.copy(abs=abs))
+    } else {
+      artbib
+    }
+  }
+
   private def extractArticleMetadata(json: Map[String, JsValue], status: ArticleStatus = UnreadArticle): Option[ArticleMetadata] = {
     val authors = json.get("authors")
                       .map(x => x.convertTo[Vector[JsValue]])
