@@ -1,5 +1,9 @@
 package io.github.harwiltz.sagerank
 
+import java.io.File
+import java.io.PrintWriter
+
+import scala.io.Source
 import scala.math
 
 import scalax.collection.Graph
@@ -15,12 +19,34 @@ import io.github.harwiltz.sagerank._
 import io.github.harwiltz.sagerank.random.RandomSampler
 import io.github.harwiltz.sagerank.random.EmpiricalCategoricalDistribution
 
-import SageRanker._
+import SageRanker.SageRankNode
+import SageRanker.SageRankGraph
+import SageRanker.SageRankType
 
 object SageRanker {
   type SageRankNode = String
   type SageRankGraph = Graph[SageRankNode, UnDiEdge]
   type SageRankType = ArticleBibliography
+}
+
+object SageRankerFactory {
+  import SageRankerJsonProtocol._
+  import SageRankerJsonFormat._
+
+  def fromFile(filepath: String): Option[SageRanker] = {
+    if(new java.io.File(filepath).exists) {
+      val str = Source.fromFile(filepath).mkString
+      Some(str.parseJson.convertTo[SageRanker])
+    } else {
+      None
+    }
+  }
+
+  def save(sageranker: SageRanker, filepath: String) {
+    val writer = new PrintWriter(new File(filepath))
+    writer.write(sageranker.toJson.toString)
+    writer.close()
+  }
 }
 
 class SageRanker(val graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
