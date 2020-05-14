@@ -80,7 +80,11 @@ class SageRanker(val graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
 
   def withChangedStatus(status: ArticleStatus)(item: SageRankType): SageRanker = this.articleMap.get(this.makeNode(item)) match {
     case Some(artbib) => {
-      val newArtBib = artbib.copy(article = artbib.article.copy(status = status))
+      val modifiedArtBib = artbib.copy(article = artbib.article.copy(status = status))
+      val newArtBib = status match {
+        case UnreadArticle => modifiedArtBib
+        case _ => Article.attachReferences(modifiedArtBib)
+      }
       val newArticleMap = this.articleMap + (this.makeNode(newArtBib) -> newArtBib)
       new SageRanker(this.graph, articleMap = newArticleMap, p = this.p)
     }
