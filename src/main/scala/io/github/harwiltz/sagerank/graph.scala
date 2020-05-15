@@ -78,17 +78,22 @@ class SageRanker(val graph: SageRankGraph = Graph[SageRankNode, UnDiEdge](),
     new SageRanker(newGraph, articleMap = newArticleMap, p = this.p)
   }
 
-  def withChangedStatus(status: ArticleStatus)(item: SageRankType): SageRanker = this.articleMap.get(this.makeNode(item)) match {
-    case Some(artbib) => {
-      val modifiedArtBib = artbib.copy(article = artbib.article.copy(status = status))
-      val newArtBib = status match {
-        case UnreadArticle => modifiedArtBib
-        case _ => Article.attachReferences(modifiedArtBib)
+  def withChangedStatus(status: ArticleStatus, justOnce: Boolean = false)(item: SageRankType): SageRanker =
+    this.articleMap.get(this.makeNode(item)) match {
+      case Some(artbib) => {
+        val modifiedArtBib = artbib.copy(article = artbib.article.copy(status = status))
+        if(justOnce) {
+          new SageRanker(this.graph, this.articleMap + (this.makeNode(item) -> modifiedArtBib), this.p)
+        } else {
+          val newArtBib = status match {
+            case UnreadArticle => modifiedArtBib
+            case _ => Article.attachReferences(modifiedArtBib)
+          }
+          this.withArticleGraph(newArtBib)
+        }
       }
-      this.withArticleGraph(newArtBib)
+      case None => this
     }
-    case None => this
-  }
 
   def withMarkedRead = withChangedStatus(ReadArticle)_
   def withMarkedUnread = withChangedStatus(UnreadArticle)_
