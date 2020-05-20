@@ -85,7 +85,7 @@ object Article {
     if(artbib.article.abs.equals(missingAbstract)) {
       val article = artbib.article
       val json = responseBodyAst(article.id)
-      val abs = json.get("abstract").map(a => a.convertTo[String]).getOrElse(missingAbstract)
+      val abs = json.get("abstract").flatMap(a => a.convertTo[Option[String]]).getOrElse(missingAbstract)
       artbib.copy(article=article.copy(abs=abs))
     } else {
       artbib
@@ -94,12 +94,12 @@ object Article {
 
   private def extractArticleMetadata(json: Map[String, JsValue], status: ArticleStatus = UnreadArticle): Option[ArticleMetadata] = {
     val authors = json.get("authors")
-                      .map(x => x.convertTo[Vector[JsValue]])
+                      .flatMap(x => x.convertTo[Option[Vector[JsValue]]])
                       .getOrElse(Vector[JsValue]())
                       .map(a => getAuthorFromJson(a))
-    val abs = json.get("abstract").map(a => a.convertTo[String])
-    val year = json.get("year").map(y => y.convertTo[Int].toString)
-    val url = json.get("url").map(u => u.convertTo[String])
+    val abs = json.get("abstract").flatMap(a => a.convertTo[Option[String]])
+    val year = json.get("year").flatMap(y => y.convertTo[Option[Either[Int, String]]]).map(_.fold(_.toString, identity))
+    val url = json.get("url").flatMap(u => u.convertTo[Option[String]])
     for {
       id <- json.get("paperId")
       title <- json.get("title")
@@ -123,7 +123,7 @@ object Article {
 
   private def getAuthorFromJson(json: JsValue): String = {
     val nameJson = json.asJsObject.fields.get("name")
-    nameJson.map(n => n.convertTo[String]).getOrElse(missingAuthorName)
+    nameJson.flatMap(n => n.convertTo[Option[String]]).getOrElse(missingAuthorName)
   }
 
   private def responseBodyAst(id: String): Map[String, JsValue] = httpResponse(id).asJsObject
