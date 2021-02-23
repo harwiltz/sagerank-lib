@@ -36,15 +36,23 @@ object SageRankerFactory {
   def fromFile(filepath: String): Option[SageRanker] = {
     if(new java.io.File(filepath).exists) {
       val str = Source.fromFile(filepath).mkString
-      Some(str.parseJson.convertTo[SageRanker])
+      fromJson(str)
     } else {
       None
     }
   }
 
+  def fromJson(json: String): Option[SageRanker] = {
+    Some(json.parseJson.convertTo[SageRanker])
+  }
+
+  def serialize(sageranker: SageRanker): String = {
+    sageranker.toJson.toString
+  }
+
   def save(sageranker: SageRanker, filepath: String) {
     val writer = new PrintWriter(new File(filepath))
-    writer.write(sageranker.toJson.toString)
+    writer.write(serialize(sageranker))
     writer.close()
   }
 }
